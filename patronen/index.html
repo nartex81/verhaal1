@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Steekpatroon Atelier</title>
+<style>
+:root{--bg:#f6f3ee;--panel:#fffdf9;--ink:#23201c;--muted:#7a7268;--line:#e2dcd2;--accent:#b5473a;--accent-ink:#fff;--sel:#2f6f8f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a18;--panel:#252320;--ink:#ece6dc;--muted:#a39a8e;--line:#3a3631;--accent:#d8695a;--accent-ink:#1b1a18;--sel:#6db3d6}}
+:root[data-theme="dark"]{--bg:#1b1a18;--panel:#252320;--ink:#ece6dc;--muted:#a39a8e;--line:#3a3631;--accent:#d8695a;--accent-ink:#1b1a18;--sel:#6db3d6}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 11px}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.on{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel);color:var(--sel)}
+input[type=number],input[type=text],input[type=search],select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 7px;width:100%}
+label{display:block;color:var(--muted);font-size:12px;margin:8px 0 3px}
+label.check{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:16px;margin:0 12px 0 0;letter-spacing:.01em}
+.tabs{display:flex;gap:4px}
+.tabs button{border-radius:999px}
+.spacer{flex:1}
+main{flex:1;min-height:0;display:flex}
+section.view{display:none;flex:1;min-height:0}
+section.view.active{display:flex}
+aside{width:280px;flex:none;overflow:auto;border-right:1px solid var(--line);background:var(--panel);padding:12px 14px}
+aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:16px 0 8px}
+aside h2:first-child{margin-top:0}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.row>*{flex:1}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.tools button{padding:6px 0;font-size:16px}
+.tools button small{display:block;font-size:10px;color:var(--muted)}
+.stage{flex:1;min-width:0;display:flex;flex-direction:column}
+.canvas-wrap{flex:1;overflow:auto;padding:24px;background:repeating-conic-gradient(var(--bg) 0 25%,var(--line) 0 50%) 0 0/16px 16px}
+.canvas-wrap canvas{display:block;margin:auto;box-shadow:0 2px 12px #0003;touch-action:none;cursor:crosshair}
+.canvas-wrap.pan canvas{touch-action:auto;cursor:grab}
+.status{display:flex;gap:16px;flex-wrap:wrap;padding:6px 14px;border-top:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:12px}
+.palette{display:flex;flex-direction:column;gap:3px}
+.pal{display:grid;grid-template-columns:26px 22px 1fr auto;align-items:center;gap:6px;padding:3px 5px;border-radius:6px;border:1px solid transparent;cursor:pointer}
+.pal:hover{background:var(--bg)}
+.pal.cur{border-color:var(--sel);background:var(--bg)}
+.sw{width:26px;height:20px;border-radius:4px;border:1px solid #0003}
+.sym{text-align:center;font-weight:700}
+.pal .n{color:var(--muted);font-size:11px;text-align:right}
+.muted{color:var(--muted);font-size:12px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:18px;max-width:min(560px,calc(100vw - 32px));width:100%}
+dialog::backdrop{background:#0006}
+dialog h3{margin:0 0 8px}
+dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dmc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px;max-height:50vh;overflow:auto;margin-top:10px}
+.dmc-grid button{padding:0;border-radius:6px;overflow:hidden;font-size:11px;text-align:center}
+.dmc-grid button i{display:block;height:30px}
+.conv-main{flex:1;overflow:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-content:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.card h3{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:600}
+.card canvas,.card img{max-width:100%;display:block;margin:auto;image-rendering:pixelated}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--sel);color:var(--sel)}
+input[type=range]{width:100%}
+@media (max-width:760px){
+  html,body{height:auto}
+  main{flex-direction:column}
+  section.view.active{flex-direction:column}
+  aside{width:auto;border-right:0;border-bottom:1px solid var(--line);max-height:42vh}
+  .canvas-wrap{padding:16px;height:75vh;flex:none}
+  .conv-main{padding:16px}
+}
+@media print{body>*{display:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Steekpatroon Atelier</h1>
+  <div class="tabs">
+    <button data-tab="editor" class="on">Patroon-editor</button>
+    <button data-tab="convert">Foto → kruissteek</button>
+  </div>
+  <div class="spacer"></div>
+  <button id="btnNew">Nieuw</button>
+  <button id="btnOpen">Openen…</button>
+  <button id="btnSave">Opslaan</button>
+  <select id="exportSel" style="width:auto">
+    <option value="">Exporteren…</option>
+    <option value="png-color">PNG – kleuren</option>
+    <option value="png-sym">PNG – symbolenschema</option>
+    <option value="print">Afdrukken (met legenda)</option>
+  </select>
+  <input type="file" id="openFile" accept=".json,.steek,application/json" hidden>
+</header>
+
+<main>
+<!-- ============ EDITOR ============ -->
+<section class="view active" id="view-editor">
+  <aside>
+    <h2>Gereedschap</h2>
+    <div class="tools" id="tools">
+      <button data-tool="pen" title="Potlood (P)">✎<small>Potlood</small></button>
+      <button data-tool="erase" title="Gum (E)">⌫<small>Gum</small></button>
+      <button data-tool="fill" title="Vullen (F)">◧<small>Vullen</small></button>
+      <button data-tool="pick" title="Pipet (I)">⊙<small>Pipet</small></button>
+      <button data-tool="line" title="Lijn (L)">╱<small>Lijn</small></button>
+      <button data-tool="rect" title="Rechthoek (R)">▭<small>Kader</small></button>
+      <button data-tool="rectf" title="Gevulde rechthoek (B)">■<small>Blok</small></button>
+      <button data-tool="pan" title="Verschuiven (H)">✋<small>Schuif</small></button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="btnUndo" title="Ongedaan maken (Ctrl+Z)">↶ Terug</button>
+      <button id="btnRedo" title="Opnieuw (Ctrl+Y)">↷ Opnieuw</button>
+    </div>
+    <label>Spiegelen tijdens tekenen</label>
+    <div class="row">
+      <button id="symX" title="Spiegel links-rechts">⇆ L/R</button>
+      <button id="symY" title="Spiegel boven-onder">⇅ B/O</button>
+    </div>
+
+    <h2>Weergave</h2>
+    <div class="row">
+      <select id="viewMode">
+        <option value="color">Kleuren</option>
+        <option value="both">Kleur + symbool</option>
+        <option value="sym">Symbolenschema</option>
+        <option value="stitch">Steekvoorbeeld</option>
+      </select>
+    </div>
+    <label>Zoom <span id="zoomVal"></span></label>
+    <input type="range" id="zoom" min="3" max="40" value="16">
+    <label class="check"><input type="checkbox" id="showGrid" checked> Raster tonen</label>
+
+    <h2>Garens <span class="muted" id="palCount"></span></h2>
+    <div class="palette" id="palette"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnAddColor">+ Kleur</button>
+      <button id="btnReplace" title="Vervang de geselecteerde kleur overal">Vervang</button>
+      <button id="btnRemove" title="Verwijder geselecteerde kleur">Verwijder</button>
+    </div>
+
+    <h2>Patroon</h2>
+    <label>Naam</label>
+    <input type="text" id="pName">
+    <div class="row">
+      <div><label>Stof (Aida-count)</label>
+        <select id="pCount"><option>11</option><option selected>14</option><option>16</option><option>18</option><option>22</option><option value="28">28 (linnen 2×)</option></select></div>
+      <div><label>Stofkleur</label><input type="color" id="pFabric" value="#ffffff" style="width:100%;height:31px;padding:0;border:1px solid var(--line);border-radius:6px"></div>
+    </div>
+    <p class="muted" id="pInfo"></p>
+    <div class="row">
+      <button id="btnResize">Formaat…</button>
+      <button id="btnCrop" title="Snijd lege randen weg">Bijsnijden</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="btnFlipH" title="Spiegel horizontaal">⇆</button>
+      <button id="btnFlipV" title="Spiegel verticaal">⇅</button>
+      <button id="btnRot" title="Draai 90° rechtsom">⟳ 90°</button>
+    </div>
+  </aside>
+  <div class="stage">
+    <div class="canvas-wrap" id="wrap"><canvas id="cv"></canvas></div>
+    <div class="status"><span id="stPos">–</span><span id="stSize"></span><span id="stSave"></span></div>
+  </div>
+</section>
+
+<!-- ============ CONVERTER ============ -->
+<section class="view" id="view-convert">
+  <aside>
+    <h2>Afbeelding</h2>
+    <div class="drop" id="drop">Klik of sleep een foto hierheen<br><small>JPG, PNG, WebP…</small></div>
+    <input type="file" id="imgFile" accept="image/*" hidden>
+    <h2>Instellingen</h2>
+    <label class="check"><input type="checkbox" id="cExact"> Pixel-exact (1 pixel = 1 steek)</label>
+    <p class="muted" style="margin:2px 0 0">Voor pixel-art of een bestaand patroon dat al als rasterafbeelding bestaat.</p>
+    <label>Breedte in steken: <b id="cWVal"></b></label>
+    <input type="range" id="cW" min="20" max="300" value="80">
+    <label>Maximaal aantal kleuren: <b id="cKVal"></b></label>
+    <input type="range" id="cK" min="2" max="50" value="16">
+    <label>Helderheid: <b id="cBVal"></b></label>
+    <input type="range" id="cB" min="-60" max="60" value="0">
+    <label>Contrast: <b id="cCVal"></b></label>
+    <input type="range" id="cC" min="-60" max="60" value="0">
+    <label>Verzadiging: <b id="cSVal"></b></label>
+    <input type="range" id="cS" min="-100" max="100" value="0">
+    <label class="check"><input type="checkbox" id="cDither"> Dithering (zachtere overgangen)</label>
+    <label class="check"><input type="checkbox" id="cClean" checked> Losse steken opruimen</label>
+    <label class="check"><input type="checkbox" id="cAlpha" checked> Transparant = niet borduren</label>
+    <label class="check"><input type="checkbox" id="cBg"> Hoekkleur als achtergrond weglaten</label>
+    <label>Stof (Aida-count)</label>
+    <select id="cCount"><option>11</option><option selected>14</option><option>16</option><option>18</option></select>
+    <div style="margin-top:14px"><button class="primary" id="btnToEditor" disabled style="width:100%">Openen in editor →</button></div>
+    <p class="muted" id="cInfo"></p>
+  </aside>
+  <div class="conv-main">
+    <div class="card"><h3>Origineel</h3><canvas id="cOrig"></canvas><p class="muted" id="cOrigInfo">Nog geen afbeelding gekozen.</p></div>
+    <div class="card"><h3>Kruissteekpatroon</h3><canvas id="cOut"></canvas><div id="cLegend" class="palette" style="margin-top:10px"></div></div>
+  </div>
+</section>
+</main>
+
+<!-- ============ DIALOGS ============ -->
+<dialog id="dlgNew">
+  <h3>Nieuw patroon</h3>
+  <label>Naam</label><input type="text" id="nName" value="Mijn patroon">
+  <div class="row">
+    <div><label>Breedte (steken)</label><input type="number" id="nW" value="60" min="1" max="500"></div>
+    <div><label>Hoogte (steken)</label><input type="number" id="nH" value="60" min="1" max="500"></div>
+  </div>
+  <div class="row">
+    <div><label>Aida-count</label><select id="nCount"><option>11</option><option selected>14</option><option>16</option><option>18</option></select></div>
+    <div><label>Stofkleur</label><input type="color" id="nFabric" value="#ffffff" style="width:100%;height:31px;padding:0"></div>
+  </div>
+  <div class="actions"><button data-close>Annuleren</button><button class="primary" id="nOk">Maken</button></div>
+</dialog>
+
+<dialog id="dlgResize">
+  <h3>Formaat wijzigen</h3>
+  <div class="row">
+    <div><label>Breedte</label><input type="number" id="rW" min="1" max="500"></div>
+    <div><label>Hoogte</label><input type="number" id="rH" min="1" max="500"></div>
+  </div>
+  <label>Bestaand ontwerp plaatsen</label>
+  <select id="rAnchor"><option value="c">In het midden</option><option value="tl">Linksboven</option></select>
+  <div class="actions"><button data-close>Annuleren</button><button class="primary" id="rOk">Toepassen</button></div>
+</dialog>
+
+<dialog id="dlgPick">
+  <h3 id="pickTitle">Kies DMC-garen</h3>
+  <div class="row">
+    <input type="search" id="pickSearch" placeholder="Zoek op nummer, bv. 310" style="flex:2">
+    <div style="flex:1;display:flex;gap:6px;align-items:center"><input type="color" id="pickColor" style="width:40px;height:31px;padding:0"><span class="muted">dichtstbij</span></div>
+  </div>
+  <p class="muted" style="margin:6px 0 0">Kleuren zijn schermbenaderingen van DMC-garens.</p>
+  <div class="dmc-grid" id="pickGrid"></div>
+  <div class="actions"><button data-close>Sluiten</button></div>
+</dialog>
+
+<script>
+"use strict";
+/* ---------- DMC-garens (benaderde schermkleuren) ---------- */
+const DMC_RAW=`B5200:FFFFFF White:FCFBF8 Ecru:F0EADA 310:000000 3865:F9F7F1 150:AB0249 151:F0CED4 152:E2A099 153:E6CCD9 154:572433 155:9891B6 156:A3AED1 157:BBC3D9 158:4C526E 159:C7CAD7 160:999FB7 161:787895 162:DBECF5 163:4D8361 164:C8D8B8 165:EFF4A4 166:C0C840 167:A77C49 168:D1D1D1 169:849195 208:835B8B 209:A37BA7 210:C39FC3 211:E3CBE3 221:883E43 223:CC847C 224:EBB7AF 225:FFDFD5 300:6F2F00 301:B35F2B 304:B71F33 307:FDED54 309:BA4A4A 311:1C5066 312:35668B 317:6C6C6C 318:ABABAB 319:205F2E 320:69885A 321:C72B3B 322:5A8FB8 326:B33B4B 333:5C5478 334:739FC1 335:EE546E 336:253B73 340:ADA7C7 341:B7BFDD 347:BF2D2D 349:D21035 350:E04848 351:E96A67 352:FD9C97 353:FED7CC 355:984436 356:C56A5B 367:617A52 368:A6C298 369:D7EDCC 370:B89D64 400:8F430F 402:F7A777 407:BB8166 413:565656 414:8C8C8C 415:D3D3D6 420:A07042 422:C69F7B 433:7A451F 434:985E33 435:B87748 436:CB9051 437:E4BB8E 444:FFD600 445:FFFB8B 451:917B73 452:C0B3AE 453:D7CECB 469:72842C 470:94AB4F 471:AEBF79 472:D8E496 498:A7132B 500:044D33 501:396F52 502:5B9071 503:7BAC94 504:C4DECC 517:3B768F 518:4F93A7 519:7EB1C8 520:666D4F 522:969E7E 524:C4CDAC 535:636458 543:F2E3CE 550:5C184E 552:803A6B 553:A3638B 554:DBB3CB 561:2C6A45 562:538B67 563:8FC0A6 564:A7CDAF 580:888D33 581:A7AE38 597:5BA3B3 598:90C3CC 600:CD2F63 601:D1286A 602:E24874 603:FF7FAA 604:FFB0BE 605:FFC0CD 606:FA3203 608:FD5D35 610:796047 611:967656 612:BC9A78 613:DCC4AA 632:875539 640:857B61 642:A49878 644:DDD8CB 646:877D73 647:B0A69C 648:BCB4AC 666:E31D42 676:E5CE97 677:F5ECCB 680:BC8D0E 699:056517 700:07731B 701:3F8F29 702:479B37 703:7BB54C 704:9ECF34 712:FFFBEF 718:9C2462 720:E55C1F 721:F27842 722:F79A6E 725:FFC840 726:FDD755 727:FFF1AF 729:D0A53E 734:C7C077 738:ECCC9E 739:F8E4C8 740:FF8313 741:FFA32B 742:FFBF57 743:FED376 744:FFE793 745:FFE9AD 746:FCFCEE 747:E5FCFD 754:F7CBBF 758:EEAA9B 760:F5ADAD 761:FFC9C9 762:ECECEC 772:E4ECD4 775:D9EBF1 776:FCB0B9 778:DFB3BB 779:624B45 780:94631A 781:A26D20 782:AE7720 783:CE9124 791:464563 792:555B7B 793:707DA2 794:8F9CC1 796:11416E 797:13477D 798:466A8E 799:748EB6 800:C0CCDE 801:653919 814:7B001B 815:87071F 816:970B23 817:BB051F 818:FFDFD9 819:FFEEEB 820:0E365C 822:E7E2D3 823:213063 824:396387 825:47819F 826:6B9EBF 827:BDDDED 828:C5E8ED 829:7E6B42 830:8D784B 831:AA8F56 832:BD9B51 833:C8AB6C 834:DBBE7F 838:594A2B 839:675541 840:9A7C5C 841:B69B7E 842:D1BAA1 844:484848 869:83643B 890:485D3E 891:FF5765 892:FF7182 893:FC90A2 894:FFB2BB 895:1B5300 898:492A13 900:D15807 902:822637 904:557822 905:628A28 906:7F8F24 907:C7E666 909:156F49 910:18805B 911:189065 912:1BA478 913:6DAB77 915:820043 917:9B1360 918:82341A 919:A64514 920:AC5439 921:C66236 922:E27323 924:56747A 926:98B6B4 927:BDCBCB 928:DDE3E3 930:455C71 931:6A8590 932:A2B5C6 934:313919 935:434D25 936:4C5826 937:627132 938:361F0E 939:1B2853 943:3D9372 945:FBD5BB 946:EB6307 947:FF7B4D 948:FEE7DA 950:EED3C4 951:FFE2CF 954:88BA91 955:A2D6AD 956:FF91A4 957:FDB5C4 958:3EB6A1 959:59C7B4 961:CF7373 962:E68A8A 963:FFD7D7 964:A9E2D8 966:B9D7C0 970:F78B13 971:F67F00 972:FFB515 973:FFE300 975:924A1E 976:C38351 977:DC9C56 986:405230 987:587148 988:738B5B 989:8DA675 991:47776F 992:6FAE9F 993:90C0B4 995:2696B6 996:30C2EC 3011:898A58 3012:A6A76C 3013:B9B985 3021:4F4B41 3022:8E9078 3023:B1AA97 3024:EBEAE7 3031:53452B 3032:B39F8B 3033:E3D9C9 3041:956F7C 3042:B79DA7 3045:BC966A 3046:D8BC9A 3047:E7D6C1 3051:5F6648 3052:889268 3053:9CA482 3064:C48E70 3072:E6E8E8 3078:FDF9CD 3325:B8D2E6 3326:FBADB4 3328:E36D6D 3340:FF836F 3341:FCAB98 3345:1B5915 3346:406A3A 3347:71935C 3348:CCD9B1 3350:BC4365 3354:E4A6AC 3362:5E6B47 3363:728256 3364:83975F 3371:1E1108 3607:C55185 3608:EA9CC4 3609:F4AED5 3685:881531 3687:C96B70 3688:E7A9AC 3689:FBBFC2 3705:FF7992 3706:FFADBC 3708:FFCBD5 3712:F18787 3713:FFE2E2 3716:FFBDBD 3721:A14B51 3722:BC6061 3726:9B5B66 3727:DBA9B2 3731:DA6783 3733:E8879B 3740:785762 3743:D7CBD3 3746:776B98 3747:D3D7ED 3750:384C5E 3752:C7D1DB 3753:DBE2E9 3755:93B4CE 3756:EEFCFC 3760:3E85A2 3761:ACD8E2 3765:347F8C 3766:99CFD9 3768:657F7F 3770:FFEEE3 3772:A06C50 3773:B67552 3774:F3E1D7 3776:CF7939 3777:863022 3778:D98978 3779:F8CAC8 3781:6B5743 3782:947C62 3787:625D50 3790:7F6A55 3799:424242 3801:E74967 3803:A33B5E 3804:E02876 3805:F3478B 3806:FF8CAE 3807:7280AD 3808:366970 3809:3F7C85 3810:4C8D97 3811:BCE3E6 3812:3BA186 3813:B2D4BD 3814:508B7D 3815:477759 3816:65A57D 3817:99C3AA 3818:115A3B 3819:E0E868 3820:DFB65F 3821:F3CE75 3822:F6DC98 3823:FFFDE3 3824:FECDC2 3825:FDBD96 3826:AD7239 3827:F7BB77 3828:B78B61 3829:A98204 3830:B95544 3831:B2122F 3832:DB556E 3833:EA8699 3834:72375D 3835:946083 3836:BA91AA 3837:6C3A6E 3838:5C7294 3839:7B8EAB 3840:B0C0DA 3841:CDDFED 3842:32667A 3843:14AAD0 3844:12AEBA 3845:04C4CA 3846:06E3E6 3847:347D75 3848:559392 3849:52B3A4 3850:378F61 3851:5AB89D 3852:CD9D37 3853:F29746 3854:F2AF68 3855:FAD396 3856:FFD3B5 3857:68251A 3858:964A3F 3859:BA8B7C 3860:7D5D57 3861:A68881 3862:8A6E4E 3863:A4835C 3864:CBB18C`;
+const DMC=DMC_RAW.split(/\s+/).map(t=>{const[code,h]=t.split(':');const hex='#'+h.toLowerCase();return{code,hex,lab:rgb2lab(...hex2rgb(hex))}});
+const DMC_BY_CODE=new Map(DMC.map(d=>[d.code,d]));
+const SYMBOLS='●■▲◆★✚✖○□△◇☆♥♦♣♠◐◑▼▶◀⬟⬢♪✿☀☾⚑ABCDEFGHKMNPRSTUVWXYZ23456789%&#@+=?!/<>~^$€£¥ΩΣΔΨλπµß¶§'.match(/./gu);
+
+/* ---------- kleurhulpen ---------- */
+function hex2rgb(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function rgb2hex(r,g,b){return'#'+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('')}
+function rgb2lab(r,g,b){
+  const f=c=>{c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)};
+  const R=f(r),G=f(g),B=f(b);
+  let x=(R*.4124+G*.3576+B*.1805)/.95047,y=R*.2126+G*.7152+B*.0722,z=(R*.0193+G*.1192+B*.9505)/1.08883;
+  const k=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+  x=k(x);y=k(y);z=k(z);
+  return[116*y-16,500*(x-y),200*(y-z)];
+}
+function dist2(a,b){const d0=a[0]-b[0],d1=a[1]-b[1],d2=a[2]-b[2];return d0*d0+d1*d1+d2*d2}
+function nearestDMC(lab,exclude){let best=null,bd=Infinity;for(const d of DMC){if(exclude&&exclude.has(d.code))continue;const v=dist2(lab,d.lab);if(v<bd){bd=v;best=d}}return best}
+function lum(hex){const[r,g,b]=hex2rgb(hex);return(.299*r+.587*g+.114*b)/255}
+
+/* ---------- patroonstaat ---------- */
+let P; // {name,w,h,count,fabric,palette:[{code,hex,sym}],cells:Int16Array}
+const V={tool:'pen',cur:0,zoom:16,mode:'color',grid:true,symX:false,symY:false};
+const undoStack=[],redoStack=[];
+
+function makePattern(name,w,h,count=14,fabric='#ffffff'){
+  const cells=new Int16Array(w*h).fill(-1);
+  return{name,w,h,count,fabric,palette:[],cells};
+}
+function snapshot(){return{w:P.w,h:P.h,palette:P.palette.map(p=>({...p})),cells:P.cells.slice()}}
+function restore(s){P.w=s.w;P.h=s.h;P.palette=s.palette;P.cells=s.cells}
+function pushUndo(){undoStack.push(snapshot());if(undoStack.length>80)undoStack.shift();redoStack.length=0}
+function undo(){if(!undoStack.length)return;redoStack.push(snapshot());restore(undoStack.pop());changed(true)}
+function redo(){if(!redoStack.length)return;undoStack.push(snapshot());restore(redoStack.pop());changed(true)}
+
+function nextSymbol(){const used=new Set(P.palette.map(p=>p.sym));return SYMBOLS.find(s=>!used.has(s))||'?'}
+function addColor(code){
+  const i=P.palette.findIndex(p=>p.code===code);
+  if(i>=0)return i;
+  const d=DMC_BY_CODE.get(code);
+  P.palette.push({code,hex:d.hex,sym:nextSymbol()});
+  return P.palette.length-1;
+}
+
+/* ---------- tekenen op canvas ---------- */
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),wrap=document.getElementById('wrap');
+let cs=16,dpr=1,preview=null,rafPending=false;
+
+function cellSize(){return Math.max(2,Math.min(V.zoom,Math.floor(8000/Math.max(P.w,P.h))))}
+function layout(){
+  cs=cellSize();dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=P.w*cs+1,H=P.h*cs+1;
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function scheduleRender(){if(rafPending)return;rafPending=true;requestAnimationFrame(()=>{rafPending=false;render()})}
+
+function drawCellAt(c,x,y,v,mode,size,fabric){
+  const px=x*size,py=y*size;
+  if(v<0){c.fillStyle=fabric;c.fillRect(px,py,size,size);return}
+  const p=P.palette[v];if(!p)return;
+  if(mode==='sym'){c.fillStyle='#fff';c.fillRect(px,py,size,size)}
+  else if(mode==='stitch'){
+    c.fillStyle=fabric;c.fillRect(px,py,size,size);
+    c.strokeStyle=p.hex;c.lineWidth=Math.max(1,size*.22);c.lineCap='round';
+    const m=size*.18;c.beginPath();c.moveTo(px+m,py+m);c.lineTo(px+size-m,py+size-m);c.moveTo(px+size-m,py+m);c.lineTo(px+m,py+size-m);c.stroke();
+    return;
+  }else{c.fillStyle=p.hex;c.fillRect(px,py,size,size)}
+  if((mode==='sym'||mode==='both')&&size>=8){
+    c.fillStyle=mode==='sym'?'#000':(lum(p.hex)>.55?'#000':'#fff');
+    c.fillText(p.sym,px+size/2,py+size/2+size*.04);
+  }
+}
+function drawGrid(c,w,h,size,mode){
+  const dark=mode==='sym';
+  c.lineWidth=1;c.strokeStyle=dark?'#0005':'#0002';
+  c.beginPath();
+  for(let x=0;x<=w;x++){if(x%10){c.moveTo(x*size+.5,0);c.lineTo(x*size+.5,h*size)}}
+  for(let y=0;y<=h;y++){if(y%10){c.moveTo(0,y*size+.5);c.lineTo(w*size,y*size+.5)}}
+  c.stroke();
+  c.strokeStyle=dark?'#000c':'#0007';c.beginPath();
+  for(let x=0;x<=w;x+=10){c.moveTo(x*size+.5,0);c.lineTo(x*size+.5,h*size)}
+  for(let y=0;y<=h;y+=10){c.moveTo(0,y*size+.5);c.lineTo(w*size,y*size+.5)}
+  if(w%10){c.moveTo(w*size+.5,0);c.lineTo(w*size+.5,h*size)}
+  if(h%10){c.moveTo(0,h*size+.5);c.lineTo(w*size,h*size+.5)}
+  c.stroke();
+}
+function setFont(c,size){c.font=`bold ${Math.floor(size*.72)}px system-ui,sans-serif`;c.textAlign='center';c.textBaseline='middle'}
+function render(){
+  const fabric=V.mode==='sym'?'#ffffff':P.fabric;
+  setFont(ctx,cs);
+  for(let y=0;y<P.h;y++)for(let x=0;x<P.w;x++)drawCellAt(ctx,x,y,P.cells[y*P.w+x],V.mode,cs,fabric);
+  if(preview){for(const[x,y]of preview.cells)if(x>=0&&y>=0&&x<P.w&&y<P.h)drawCellAt(ctx,x,y,preview.v,V.mode,cs,fabric)}
+  if(V.grid&&cs>=5)drawGrid(ctx,P.w,P.h,cs,V.mode);
+  // spiegelassen
+  if(V.symX||V.symY){ctx.strokeStyle='#2f6f8f';ctx.setLineDash([6,4]);ctx.lineWidth=2;ctx.beginPath();
+    if(V.symX){ctx.moveTo(P.w*cs/2,0);ctx.lineTo(P.w*cs/2,P.h*cs)}
+    if(V.symY){ctx.moveTo(0,P.h*cs/2);ctx.lineTo(P.w*cs,P.h*cs/2)}
+    ctx.stroke();ctx.setLineDash([])}
+}
+
+/* ---------- bewerkingen ---------- */
+function inside(x,y){return x>=0&&y>=0&&x<P.w&&y<P.h}
+function mirrored(x,y){const out=[[x,y]];if(V.symX)out.push([P.w-1-x,y]);if(V.symY)out.push([x,P.h-1-y]);if(V.symX&&V.symY)out.push([P.w-1-x,P.h-1-y]);return out}
+function setCell(x,y,v){for(const[a,b]of mirrored(x,y))if(inside(a,b))P.cells[b*P.w+a]=v}
+function lineCells(x0,y0,x1,y1){const out=[];let dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,e=dx+dy;
+  for(;;){out.push([x0,y0]);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}return out}
+function rectCells(x0,y0,x1,y1,filled){const out=[];const a=Math.min(x0,x1),b=Math.max(x0,x1),c=Math.min(y0,y1),d=Math.max(y0,y1);
+  for(let y=c;y<=d;y++)for(let x=a;x<=b;x++)if(filled||x===a||x===b||y===c||y===d)out.push([x,y]);return out}
+function withMirrors(list){if(!V.symX&&!V.symY)return list;const out=[];for(const[x,y]of list)out.push(...mirrored(x,y));return out}
+function flood(x,y,v){
+  const t=P.cells[y*P.w+x];if(t===v)return;
+  const st=[[x,y]];
+  while(st.length){const[a,b]=st.pop();if(!inside(a,b)||P.cells[b*P.w+a]!==t)continue;
+    P.cells[b*P.w+a]=v;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1])}
+}
+function curValue(){return P.palette.length?V.cur:-1}
+
+let drag=null;
+function evCell(e){const r=cv.getBoundingClientRect();return[Math.floor((e.clientX-r.left)/cs),Math.floor((e.clientY-r.top)/cs)]}
+cv.addEventListener('pointerdown',e=>{
+  if(V.tool==='pan'||e.button===1)return;
+  e.preventDefault();cv.setPointerCapture(e.pointerId);
+  const[x,y]=evCell(e);if(!inside(x,y))return;
+  const erase=V.tool==='erase'||e.button===2;
+  const v=erase?-1:curValue();
+  if(V.tool==='pick'){const c=P.cells[y*P.w+x];if(c>=0){V.cur=c;renderPalette();setTool('pen')}return}
+  if(!erase&&v<0&&V.tool!=='pick'){openPicker('add');return}
+  pushUndo();
+  if(V.tool==='fill'){flood(x,y,v);changed();return}
+  drag={x0:x,y0:y,lx:x,ly:y,v,tool:erase?'pen':V.tool};
+  if(drag.tool==='pen'){setCell(x,y,v);scheduleRender()}
+  else{preview={v,cells:[[x,y]]};scheduleRender()}
+});
+cv.addEventListener('pointermove',e=>{
+  const[x,y]=evCell(e);
+  document.getElementById('stPos').textContent=inside(x,y)?`Kolom ${x+1}, rij ${y+1}`+(P.cells[y*P.w+x]>=0?` · DMC ${P.palette[P.cells[y*P.w+x]].code}`:''):'–';
+  if(!drag)return;
+  if(drag.tool==='pen'){for(const[a,b]of lineCells(drag.lx,drag.ly,x,y))setCell(a,b,drag.v);drag.lx=x;drag.ly=y;scheduleRender()}
+  else{const list=drag.tool==='line'?lineCells(drag.x0,drag.y0,x,y):rectCells(drag.x0,drag.y0,x,y,drag.tool==='rectf');preview={v:drag.v,cells:withMirrors(list)};scheduleRender()}
+});
+function endDrag(){
+  if(!drag)return;
+  if(preview){for(const[x,y]of preview.cells)if(inside(x,y))P.cells[y*P.w+x]=preview.v;preview=null}
+  drag=null;changed();
+}
+cv.addEventListener('pointerup',endDrag);
+cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+wrap.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();setZoom(V.zoom+(e.deltaY<0?2:-2))}},{passive:false});
+
+/* ---------- UI-koppeling ---------- */
+const $=id=>document.getElementById(id);
+function setTool(t){V.tool=t;document.querySelectorAll('#tools button').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));wrap.classList.toggle('pan',t==='pan')}
+function setZoom(z){V.zoom=Math.max(3,Math.min(40,z));$('zoom').value=V.zoom;$('zoomVal').textContent=V.zoom+' px';layout();scheduleRender()}
+document.querySelectorAll('#tools button').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('btnUndo').onclick=undo;$('btnRedo').onclick=redo;
+$('symX').onclick=()=>{V.symX=!V.symX;$('symX').classList.toggle('on',V.symX);scheduleRender()};
+$('symY').onclick=()=>{V.symY=!V.symY;$('symY').classList.toggle('on',V.symY);scheduleRender()};
+$('viewMode').onchange=e=>{V.mode=e.target.value;scheduleRender()};
+$('zoom').oninput=e=>setZoom(+e.target.value);
+$('showGrid').onchange=e=>{V.grid=e.target.checked;scheduleRender()};
+$('pName').oninput=e=>{P.name=e.target.value;save()};
+$('pCount').onchange=e=>{P.count=+e.target.value;updateInfo();save()};
+$('pFabric').oninput=e=>{P.fabric=e.target.value;scheduleRender();save()};
+
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,select,textarea'))return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
+  if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();redo();return}
+  if((e.ctrlKey||e.metaKey)&&k==='s'){e.preventDefault();downloadJSON();return}
+  const map={p:'pen',e:'erase',f:'fill',i:'pick',l:'line',r:'rect',b:'rectf',h:'pan'};
+  if(map[k]&&!e.ctrlKey&&!e.metaKey)setTool(map[k]);
+  if(k==='+'||k==='=')setZoom(V.zoom+2);
+  if(k==='-')setZoom(V.zoom-2);
+});
+
+function counts(){const n=new Array(P.palette.length).fill(0);for(const v of P.cells)if(v>=0)n[v]++;return n}
+function skeins(stitches,count){return stitches/(1800*count/14)}
+function renderPalette(){
+  const n=counts(),el=$('palette');el.innerHTML='';
+  if(V.cur>=P.palette.length)V.cur=Math.max(0,P.palette.length-1);
+  P.palette.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='pal'+(i===V.cur?' cur':'');
+    d.innerHTML=`<span class="sw" style="background:${p.hex}"></span><span class="sym">${p.sym}</span><span>DMC ${p.code}</span><span class="n">${n[i]}</span>`;
+    d.title=`${n[i]} steken · ±${Math.max(1,Math.ceil(skeins(n[i],P.count)))} streng(en)`;
+    d.onclick=()=>{V.cur=i;if(V.tool==='erase'||V.tool==='pick'||V.tool==='pan')setTool('pen');renderPalette()};
+    el.appendChild(d);
+  });
+  if(!P.palette.length)el.innerHTML='<p class="muted">Nog geen garens. Voeg een kleur toe om te tekenen.</p>';
+  $('palCount').textContent=P.palette.length?`(${P.palette.length})`:'';
+}
+function updateInfo(){
+  const n=P.cells.reduce((a,v)=>a+(v>=0),0);
+  const cm=v=>(v/P.count*2.54).toFixed(1);
+  $('pInfo').textContent=`${P.w} × ${P.h} steken · ${n} kruisjes · ±${cm(P.w)} × ${cm(P.h)} cm op ${P.count}-count`;
+  $('stSize').textContent=`${P.w}×${P.h}`;
+}
+function syncFields(){$('pName').value=P.name;$('pCount').value=String(P.count);if(![...$('pCount').options].some(o=>o.value==P.count)){$('pCount').add(new Option(P.count,P.count));$('pCount').value=P.count}$('pFabric').value=P.fabric}
+function changed(relayout){if(relayout)layout();scheduleRender();renderPalette();updateInfo();save()}
+function loadPattern(p){P=p;undoStack.length=0;redoStack.length=0;V.cur=0;syncFields();changed(true)}
+
+/* ---------- kleurenbeheer ---------- */
+let pickMode='add';
+function openPicker(mode){
+  pickMode=mode;
+  if(mode==='replace'&&!P.palette.length)return;
+  $('pickTitle').textContent=mode==='replace'?`Vervang DMC ${P.palette[V.cur].code} door…`:'Kies DMC-garen';
+  $('pickSearch').value='';fillPicker();$('dlgPick').showModal();
+}
+function fillPicker(list){
+  const g=$('pickGrid');g.innerHTML='';
+  const q=$('pickSearch').value.trim().toLowerCase();
+  const items=list||DMC.filter(d=>!q||d.code.toLowerCase().includes(q));
+  for(const d of items){const b=document.createElement('button');b.innerHTML=`<i style="background:${d.hex}"></i>${d.code}`;b.onclick=()=>choose(d.code);g.appendChild(b)}
+}
+$('pickSearch').oninput=()=>fillPicker();
+$('pickColor').oninput=e=>{const lab=rgb2lab(...hex2rgb(e.target.value));fillPicker(DMC.slice().sort((a,b)=>dist2(a.lab,lab)-dist2(b.lab,lab)).slice(0,24))};
+function choose(code){
+  pushUndo();
+  if(pickMode==='add'){V.cur=addColor(code)}
+  else{
+    const from=V.cur,ex=P.palette.findIndex(p=>p.code===code);
+    if(ex===from){}
+    else if(ex>=0){for(let i=0;i<P.cells.length;i++)if(P.cells[i]===from)P.cells[i]=ex;removeIndex(from);V.cur=ex>from?ex-1:ex}
+    else{const d=DMC_BY_CODE.get(code);P.palette[from].code=code;P.palette[from].hex=d.hex}
+  }
+  $('dlgPick').close();changed();
+}
+function removeIndex(idx){
+  for(let i=0;i<P.cells.length;i++){const v=P.cells[i];if(v===idx)P.cells[i]=-1;else if(v>idx)P.cells[i]=v-1}
+  P.palette.splice(idx,1);
+}
+$('btnAddColor').onclick=()=>openPicker('add');
+$('btnReplace').onclick=()=>openPicker('replace');
+$('btnRemove').onclick=()=>{if(!P.palette.length)return;const p=P.palette[V.cur];if(counts()[V.cur]&&!confirm(`DMC ${p.code} verwijderen? Alle steken in deze kleur worden gewist.`))return;pushUndo();removeIndex(V.cur);changed()};
+
+/* ---------- patroonbewerkingen ---------- */
+function transform(nw,nh,fn){const out=new Int16Array(nw*nh).fill(-1);for(let y=0;y<P.h;y++)for(let x=0;x<P.w;x++){const[a,b]=fn(x,y);if(a>=0&&b>=0&&a<nw&&b<nh)out[b*nw+a]=P.cells[y*P.w+x]}pushUndo();P.cells=out;P.w=nw;P.h=nh;changed(true)}
+$('btnFlipH').onclick=()=>transform(P.w,P.h,(x,y)=>[P.w-1-x,y]);
+$('btnFlipV').onclick=()=>transform(P.w,P.h,(x,y)=>[x,P.h-1-y]);
+$('btnRot').onclick=()=>transform(P.h,P.w,(x,y)=>[P.h-1-y,x]);
+$('btnCrop').onclick=()=>{let x0=P.w,y0=P.h,x1=-1,y1=-1;for(let y=0;y<P.h;y++)for(let x=0;x<P.w;x++)if(P.cells[y*P.w+x]>=0){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  if(x1<0)return;transform(x1-x0+1,y1-y0+1,(x,y)=>[x-x0,y-y0])};
+$('btnResize').onclick=()=>{$('rW').value=P.w;$('rH').value=P.h;$('dlgResize').showModal()};
+$('rOk').onclick=()=>{const nw=clampInt($('rW').value,1,500),nh=clampInt($('rH').value,1,500);
+  const ox=$('rAnchor').value==='c'?Math.floor((nw-P.w)/2):0,oy=$('rAnchor').value==='c'?Math.floor((nh-P.h)/2):0;
+  $('dlgResize').close();transform(nw,nh,(x,y)=>[x+ox,y+oy])};
+function clampInt(v,a,b){v=parseInt(v,10);return isNaN(v)?a:Math.max(a,Math.min(b,v))}
+
+/* ---------- nieuw / openen / opslaan ---------- */
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('btnNew').onclick=()=>$('dlgNew').showModal();
+$('nOk').onclick=()=>{
+  const p=makePattern($('nName').value||'Mijn patroon',clampInt($('nW').value,1,500),clampInt($('nH').value,1,500),+$('nCount').value,$('nFabric').value);
+  ['310','White','321','797','700','444'].forEach(c=>{const d=DMC_BY_CODE.get(c);p.palette.push({code:c,hex:d.hex,sym:SYMBOLS[p.palette.length]})});
+  $('dlgNew').close();loadPattern(p);showTab('editor');
+};
+function serialize(){return JSON.stringify({format:'steekpatroon',version:1,name:P.name,width:P.w,height:P.h,count:P.count,fabric:P.fabric,palette:P.palette,cells:Array.from(P.cells)})}
+function deserialize(txt){
+  const o=JSON.parse(txt);
+  if(o.format!=='steekpatroon'||!o.width||!o.height||!Array.isArray(o.cells)||o.cells.length!==o.width*o.height)throw new Error('Onbekend bestandsformaat');
+  const p=makePattern(o.name||'Patroon',o.width,o.height,o.count||14,o.fabric||'#ffffff');
+  p.palette=(o.palette||[]).map((c,i)=>({code:String(c.code),hex:c.hex||(DMC_BY_CODE.get(String(c.code))||{hex:'#888888'}).hex,sym:c.sym||SYMBOLS[i]||'?'}));
+  p.cells=Int16Array.from(o.cells,v=>v>=0&&v<p.palette.length?v:-1);
+  return p;
+}
+function fileName(ext){return(P.name||'patroon').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')+ext}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+function downloadJSON(){download(new Blob([serialize()],{type:'application/json'}),fileName('.steek.json'))}
+$('btnSave').onclick=downloadJSON;
+$('btnOpen').onclick=()=>$('openFile').click();
+$('openFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{loadPattern(deserialize(await f.text()));showTab('editor')}catch(err){alert('Kon dit patroon niet openen: '+err.message)}};
+let saveTimer;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem('steekpatroon:huidig',serialize());$('stSave').textContent='Automatisch bewaard'}catch(e){$('stSave').textContent=''}},400)}
+
+/* ---------- exporteren ---------- */
+function chartCanvas(mode,size,x0=0,y0=0,w=P.w,h=P.h){
+  const c=document.createElement('canvas'),k=c.getContext('2d');
+  const m=mode==='sym'?Math.ceil(size*1.6):0; // ruimte voor rij/kolomnummers
+  c.width=w*size+1+m;c.height=h*size+1+m;
+  k.fillStyle='#fff';k.fillRect(0,0,c.width,c.height);
+  if(m){k.fillStyle='#000';k.font=`${Math.floor(size*.6)}px system-ui,sans-serif`;k.textAlign='center';k.textBaseline='middle';
+    for(let x=0;x<w;x++)if((x0+x+1)%10===0)k.fillText(x0+x+1,m+(x+1)*size,m/2);
+    k.textAlign='right';for(let y=0;y<h;y++)if((y0+y+1)%10===0)k.fillText(y0+y+1,m-3,m+(y+1)*size)}
+  k.translate(m,m);setFont(k,size);
+  const fabric=mode==='sym'?'#ffffff':P.fabric;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)drawCellAt(k,x,y,P.cells[(y0+y)*P.w+x0+x],mode,size,fabric);
+  if(size>=5)drawGrid(k,w,h,size,mode);
+  return c;
+}
+function exportPNG(mode){const c=chartCanvas(mode,mode==='sym'?20:Math.max(6,Math.min(20,Math.floor(4000/Math.max(P.w,P.h)))));c.toBlob(b=>download(b,fileName(mode==='sym'?'-schema.png':'.png')))}
+function exportPrint(){
+  const TW=50,TH=65,n=counts();
+  const cm=v=>(v/P.count*2.54).toFixed(1);
+  let html=`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>${esc(P.name)}</title><style>body{font:12px system-ui,sans-serif;margin:16px;color:#000}img{max-width:100%;display:block}h1{font-size:20px;margin:0 0 4px}.pg{page-break-after:always;margin-bottom:24px}table{border-collapse:collapse}td,th{border:1px solid #999;padding:3px 8px;text-align:left}i{display:inline-block;width:22px;height:14px;border:1px solid #0004;vertical-align:middle}</style></head><body>`;
+  html+=`<div class="pg"><h1>${esc(P.name)}</h1><p>${P.w} × ${P.h} steken · ±${cm(P.w)} × ${cm(P.h)} cm op ${P.count}-count Aida</p>`;
+  html+=`<img src="${chartCanvas('color',Math.max(3,Math.min(12,Math.floor(700/Math.max(P.w,P.h))))).toDataURL()}" style="max-width:60%">`;
+  html+=`<h2>Garens</h2><table><tr><th>Symbool</th><th>Kleur</th><th>DMC</th><th>Steken</th><th>Strengen (±)</th></tr>`;
+  P.palette.forEach((p,i)=>{if(n[i])html+=`<tr><td><b>${p.sym}</b></td><td><i style="background:${p.hex}"></i></td><td>${esc(p.code)}</td><td>${n[i]}</td><td>${Math.max(1,Math.ceil(skeins(n[i],P.count)))}</td></tr>`});
+  html+=`</table></div>`;
+  const tx=Math.ceil(P.w/TW),ty=Math.ceil(P.h/TH);
+  for(let j=0;j<ty;j++)for(let i=0;i<tx;i++){const x0=i*TW,y0=j*TH,w=Math.min(TW,P.w-x0),h=Math.min(TH,P.h-y0);
+    html+=`<div class="pg"><p>Deel ${j*tx+i+1} van ${tx*ty} — kolommen ${x0+1}–${x0+w}, rijen ${y0+1}–${y0+h}</p><img src="${chartCanvas('sym',22,x0,y0,w,h).toDataURL()}"></div>`}
+  html+=`<script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`;
+  const win=window.open('','_blank');
+  if(!win){download(new Blob([html],{type:'text/html'}),fileName('-afdruk.html'));return}
+  win.document.write(html);win.document.close();
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+$('exportSel').onchange=e=>{const v=e.target.value;e.target.value='';if(v==='png-color')exportPNG('color');if(v==='png-sym')exportPNG('sym');if(v==='print')exportPrint()};
+
+/* ---------- tabs ---------- */
+function showTab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+t));if(t==='editor')scheduleRender()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+/* ================= FOTO → KRUISSTEEK ================= */
+let srcImg=null,convResult=null,convTimer;
+const drop=$('drop');
+drop.onclick=()=>$('imgFile').click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');const f=e.dataTransfer.files[0];if(f)loadImage(f)};
+$('imgFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)loadImage(f)};
+function loadImage(f){
+  const img=new Image();
+  img.onload=()=>{srcImg=img;srcImg.baseName=f.name.replace(/\.[^.]+$/,'');
+    const o=$('cOrig');const s=Math.min(1,600/Math.max(img.width,img.height));o.width=Math.round(img.width*s);o.height=Math.round(img.height*s);o.getContext('2d').drawImage(img,0,0,o.width,o.height);
+    $('cOrigInfo').textContent=`${img.width} × ${img.height} pixels`;
+    if($('cExact').checked&&Math.max(img.width,img.height)>500)$('cExact').checked=false;
+    queueConvert(0)};
+  img.onerror=()=>alert('Deze afbeelding kon niet worden gelezen.');
+  img.src=URL.createObjectURL(f);
+}
+['cW','cK','cB','cC','cS','cDither','cClean','cAlpha','cBg','cExact','cCount'].forEach(id=>$(id).addEventListener('input',()=>queueConvert()));
+function updateLabels(){$('cWVal').textContent=$('cExact').checked&&srcImg?srcImg.width:$('cW').value;$('cKVal').textContent=$('cK').value;$('cBVal').textContent=$('cB').value;$('cCVal').textContent=$('cC').value;$('cSVal').textContent=$('cS').value;$('cW').disabled=$('cExact').checked}
+function queueConvert(d=180){updateLabels();clearTimeout(convTimer);if(srcImg)convTimer=setTimeout(convert,d)}
+
+function samplePixels(img,w,h,exact){
+  const c=document.createElement('canvas'),k=c.getContext('2d',{willReadFrequently:true});
+  if(exact){c.width=w;c.height=h;k.imageSmoothingEnabled=false;k.drawImage(img,0,0,w,h);return k.getImageData(0,0,w,h).data}
+  const f=Math.max(1,Math.min(6,Math.floor(img.width/w)));
+  c.width=w*f;c.height=h*f;k.imageSmoothingQuality='high';k.drawImage(img,0,0,c.width,c.height);
+  const d=k.getImageData(0,0,c.width,c.height).data,out=new Uint8ClampedArray(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let r=0,g=0,b=0,a=0;
+    for(let j=0;j<f;j++)for(let i=0;i<f;i++){const o=((y*f+j)*c.width+x*f+i)*4,al=d[o+3];r+=d[o]*al;g+=d[o+1]*al;b+=d[o+2]*al;a+=al}
+    const o=(y*w+x)*4;if(a){out[o]=r/a;out[o+1]=g/a;out[o+2]=b/a}out[o+3]=a/(f*f)}
+  return out;
+}
+function adjust(d){
+  const B=+$('cB').value*2,C=+$('cC').value,S=+$('cS').value/100;
+  if(!B&&!C&&!S)return;
+  const cf=(259*(C*2.55+255))/(255*(259-C*2.55));
+  for(let i=0;i<d.length;i+=4){let r=d[i],g=d[i+1],b=d[i+2];
+    r=cf*(r-128)+128+B;g=cf*(g-128)+128+B;b=cf*(b-128)+128+B;
+    const l=.299*r+.587*g+.114*b;r=l+(r-l)*(1+S);g=l+(g-l)*(1+S);b=l+(b-l)*(1+S);
+    d[i]=r;d[i+1]=g;d[i+2]=b}
+}
+function kmeans(labs,k){
+  const n=labs.length/3;if(!n)return[];
+  const step=Math.max(1,Math.floor(n/20000)),idx=[];for(let i=0;i<n;i+=step)idx.push(i);
+  const pt=i=>[labs[i*3],labs[i*3+1],labs[i*3+2]];
+  // k-means++ initialisatie
+  const C=[pt(idx[Math.floor(idx.length/2)])],D=new Float64Array(idx.length).fill(Infinity);
+  while(C.length<k){let sum=0;const last=C[C.length-1];
+    for(let j=0;j<idx.length;j++){const v=dist2(pt(idx[j]),last);if(v<D[j])D[j]=v;sum+=D[j]}
+    if(sum===0)break;let r=Math.random()*sum,j=0;for(;j<idx.length-1;j++){r-=D[j];if(r<=0)break}C.push(pt(idx[j]))}
+  const asg=new Int32Array(idx.length);
+  for(let it=0;it<12;it++){
+    const S=C.map(()=>[0,0,0,0]);
+    for(let j=0;j<idx.length;j++){const p=pt(idx[j]);let b=0,bd=Infinity;for(let c=0;c<C.length;c++){const v=dist2(p,C[c]);if(v<bd){bd=v;b=c}}asg[j]=b;const s=S[b];s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];s[3]++}
+    S.forEach((s,c)=>{if(s[3])C[c]=[s[0]/s[3],s[1]/s[3],s[2]/s[3]]});
+  }
+  return C;
+}
+function convert(){
+  const img=srcImg,exact=$('cExact').checked;
+  let w=exact?img.width:+$('cW').value,h=Math.max(1,Math.round(w*img.height/img.width));
+  if(exact){w=Math.min(w,500);h=Math.min(img.height,500)}
+  const d=samplePixels(img,w,h,exact);adjust(d);
+  const useAlpha=$('cAlpha').checked,N=w*h;
+  const mask=new Uint8Array(N);for(let i=0;i<N;i++)mask[i]=useAlpha&&d[i*4+3]<128?0:1;
+  if($('cBg').checked){const cr=[0,w-1,(h-1)*w,N-1].map(i=>[d[i*4],d[i*4+1],d[i*4+2]]);
+    const bg=cr[0];const lb=rgb2lab(...bg);for(let i=0;i<N;i++)if(mask[i]&&dist2(rgb2lab(d[i*4],d[i*4+1],d[i*4+2]),lb)<60)mask[i]=0}
+  const labs=[];for(let i=0;i<N;i++)if(mask[i]){const l=rgb2lab(d[i*4],d[i*4+1],d[i*4+2]);labs.push(l[0],l[1],l[2])}
+  const K=+$('cK').value;
+  // clusters → dichtstbijzijnde unieke DMC-garens
+  let pal=[];
+  if(exact){ // eerst exacte unieke kleuren proberen
+    const uniq=new Map();for(let i=0;i<N&&uniq.size<=K;i++)if(mask[i])uniq.set((d[i*4]<<16)|(d[i*4+1]<<8)|d[i*4+2],1);
+    if(uniq.size<=K){const seen=new Set();for(const key of uniq.keys()){const m=nearestDMC(rgb2lab(key>>16,(key>>8)&255,key&255));if(!seen.has(m.code)){seen.add(m.code);pal.push(m)}}}
+  }
+  if(!pal.length){const seen=new Set();for(const c of kmeans(new Float32Array(labs),K)){const m=nearestDMC(c);if(!seen.has(m.code)){seen.add(m.code);pal.push(m)}}}
+  // toewijzen (optioneel met Floyd–Steinberg dithering)
+  const cells=new Int16Array(N).fill(-1),dither=$('cDither').checked;
+  const buf=new Float32Array(N*3);for(let i=0;i<N;i++){buf[i*3]=d[i*4];buf[i*3+1]=d[i*4+1];buf[i*3+2]=d[i*4+2]}
+  const palRGB=pal.map(p=>hex2rgb(p.hex)),cache=new Map();
+  const nearest=(r,g,b)=>{const key=((r>>2)<<12)|((g>>2)<<6)|(b>>2);let v=cache.get(key);if(v===undefined){const l=rgb2lab(r,g,b);let bd=Infinity;v=0;for(let j=0;j<pal.length;j++){const q=dist2(l,pal[j].lab);if(q<bd){bd=q;v=j}}cache.set(key,v)}return v};
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!mask[i])continue;
+    const r=Math.max(0,Math.min(255,buf[i*3])),g=Math.max(0,Math.min(255,buf[i*3+1])),b=Math.max(0,Math.min(255,buf[i*3+2]));
+    const v=nearest(r|0,g|0,b|0);cells[i]=v;
+    if(dither){const q=palRGB[v],er=[r-q[0],g-q[1],b-q[2]];
+      const spread=(dx,dy,f)=>{const xx=x+dx,yy=y+dy;if(xx<0||xx>=w||yy>=h)return;const o=(yy*w+xx)*3;buf[o]+=er[0]*f;buf[o+1]+=er[1]*f;buf[o+2]+=er[2]*f};
+      spread(1,0,7/16);spread(-1,1,3/16);spread(0,1,5/16);spread(1,1,1/16)}}
+  if($('cClean').checked&&!exact)cleanup(cells,w,h);
+  // ongebruikte garens weglaten
+  const used=new Array(pal.length).fill(0);for(const v of cells)if(v>=0)used[v]++;
+  const remap=[],palette=[];pal.forEach((p,j)=>{if(used[j]){remap[j]=palette.length;palette.push({code:p.code,hex:p.hex,sym:SYMBOLS[palette.length]||'?'})}});
+  for(let i=0;i<N;i++)if(cells[i]>=0)cells[i]=remap[cells[i]];
+  const count=+$('cCount').value;
+  convResult={name:img.baseName||'Foto-patroon',w,h,count,fabric:'#ffffff',palette,cells};
+  drawConvPreview();
+}
+function cleanup(cells,w,h){
+  for(let pass=0;pass<2;pass++){const src=cells.slice();
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=src[y*w+x];if(v<0)continue;const tally=new Map();let same=0;
+      for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){if(!i&&!j)continue;const xx=x+i,yy=y+j;if(xx<0||yy<0||xx>=w||yy>=h)continue;const u=src[yy*w+xx];if(u===v)same++;else if(u>=0)tally.set(u,(tally.get(u)||0)+1)}
+      if(same===0&&tally.size){let best=-1,bn=0;for(const[u,c]of tally)if(c>bn){bn=c;best=u}cells[y*w+x]=best}}}
+}
+function drawConvPreview(){
+  const r=convResult,c=$('cOut'),s=Math.max(2,Math.floor(600/Math.max(r.w,r.h)));
+  c.width=r.w*s;c.height=r.h*s;const k=c.getContext('2d');k.fillStyle=r.fabric;k.fillRect(0,0,c.width,c.height);
+  for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++){const v=r.cells[y*r.w+x];if(v>=0){k.fillStyle=r.palette[v].hex;k.fillRect(x*s,y*s,s,s)}}
+  const n=new Array(r.palette.length).fill(0);for(const v of r.cells)if(v>=0)n[v]++;
+  $('cLegend').innerHTML=r.palette.map((p,i)=>`<div class="pal" style="cursor:default"><span class="sw" style="background:${p.hex}"></span><span class="sym">${p.sym}</span><span>DMC ${p.code}</span><span class="n">${n[i]} st.</span></div>`).join('');
+  const cm=v=>(v/r.count*2.54).toFixed(1);
+  $('cInfo').textContent=`${r.w} × ${r.h} steken · ${r.palette.length} garens · ±${cm(r.w)} × ${cm(r.h)} cm op ${r.count}-count`;
+  $('btnToEditor').disabled=false;
+}
+$('btnToEditor').onclick=()=>{if(!convResult)return;const r=convResult;loadPattern({...r,palette:r.palette.map(p=>({...p})),cells:r.cells.slice()});showTab('editor')};
+
+/* ---------- start ---------- */
+(function init(){
+  let p=null;try{const s=localStorage.getItem('steekpatroon:huidig');if(s)p=deserialize(s)}catch(e){}
+  if(!p){p=makePattern('Mijn patroon',40,40);
+    ['310','White','321','797','700','444'].forEach((c,i)=>p.palette.push({code:c,hex:DMC_BY_CODE.get(c).hex,sym:SYMBOLS[i]}));
+    // klein voorbeeldhartje
+    const heart=['.XX...XX.','XXXX.XXXX','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..','...XXX...','....X....'];
+    heart.forEach((row,y)=>[...row].forEach((ch,x)=>{if(ch==='X')p.cells[(y+16)*40+x+15]=2}));}
+  setTool('pen');$('zoom').value=V.zoom;$('zoomVal').textContent=V.zoom+' px';updateLabels();
+  loadPattern(p);
+})();
+</script>
+</body>
+</html>
